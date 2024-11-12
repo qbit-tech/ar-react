@@ -70,6 +70,14 @@ function TaskVisionGlasses() {
     }
   };
 
+  // useEffect(() => {
+  //   const modelUrl = 'Excellent_1803_whitetransparant_2021.gltf';
+  //   const loader = new GLTFLoader();
+  //   loader.load(modelUrl, (gltf: any) => {
+  //     setGLTF(gltf);
+  //   });
+  // }, [])
+
   const onResults = (results: any) => {
     console.log('Hasil Deteksi Wajah:', results);
     if (results.faceLandmarks && results.faceLandmarks.length > 0) {
@@ -291,8 +299,6 @@ function TaskVisionGlasses() {
 
   return (
     <div>
-      <input type="file" accept=".glb,.gltf" onChange={handleFileChange} />
-
       <div style={{ position: 'relative' }}>
         <video
           ref={videoRef}
@@ -331,17 +337,22 @@ function TaskVisionGlasses() {
                 scale={glassesScale}
               />
             ) : (
-              <GlassesModel
-                // landmarks={landmarks}
-                position={glassesPosition}
-                rotation={glassesRotation}
-                scale={glassesScale}
-              />
+              // <GlassesModelDefault
+              //   // landmarks={landmarks}
+              //   position={glassesPosition}
+              //   rotation={glassesRotation}
+              //   scale={glassesScale}
+              // />
+              false
             )}
           </Canvas>
         ) : (
           false
         )}
+
+        <div>
+          <input type="file" accept=".glb,.gltf" onChange={handleFileChange} />
+        </div>
 
         <div
           className="blend-shapes"
@@ -357,7 +368,23 @@ function TaskVisionGlasses() {
 export default TaskVisionGlasses;
 
 function GlassesModel({ gltf, position, rotation, scale }: any) {
-  const gltfDefault = useGLTF('/Excellent_1803_whitetransparant_2021.gltf');
+  useFrame(() => {
+    // Update posisi dan rotasi kacamata di sini jika diperlukan
+  });
+
+  return (
+    <primitive
+      // object={model}
+      object={gltf.scene}
+      position={position}
+      rotation={rotation}
+      scale={scale}
+    />
+  );
+}
+
+function GlassesModelDefault({ position, rotation, scale }: any) {
+  const gltfDefault = useGLTF('Excellent_1803_whitetransparant_2021.gltf');
   // const gltf = useGLTF('/test-glasses2.glb');
 
   useFrame(() => {
@@ -367,7 +394,7 @@ function GlassesModel({ gltf, position, rotation, scale }: any) {
   return (
     <primitive
       // object={model}
-      object={gltf ? gltf.scene : gltfDefault.scene}
+      object={gltfDefault.scene}
       position={position}
       rotation={rotation}
       scale={scale}
