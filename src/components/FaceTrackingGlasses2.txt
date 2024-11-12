@@ -1,0 +1,81 @@
+import React, { useRef, useEffect } from 'react';
+import * as tf from '@tensorflow/tfjs';
+
+const FaceTrackingGlasses2 = () => {
+  const videoRef: any = useRef(null);
+
+  useEffect(() => {
+    // Fungsi untuk mengakses kamera dan menampilkan feed di elemen video
+    const startCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+      }
+    };
+
+    // Memulai kamera saat komponen pertama kali di-mount
+    startCamera();
+
+    // Cleanup: menghentikan kamera saat komponen di-unmount
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject;
+        const tracks = stream.getTracks();
+        tracks.forEach((track: any) => track.stop());
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    // Fungsi untuk memproses frame video menggunakan TensorFlow.js
+    const processFrame = () => {
+      if (videoRef.current) {
+        try {
+          const tensor = tf.browser.fromPixels(videoRef.current);
+          console.log('Tensor:', tensor);
+          // Lakukan sesuatu dengan tensor, misalnya kirim ke model TensorFlow.js
+        } catch (error) {
+          console.error('Error processing frame:', error);
+        }
+      }
+    };
+
+    // Event listener untuk memproses frame ketika video siap dimainkan
+    const handleCanPlay = () => {
+      setInterval(processFrame, 1000 / 30); // Memproses frame setiap 30 fps
+    };
+
+    const videoElement: any = videoRef.current;
+    if (videoElement) {
+      videoElement.addEventListener('canplay', handleCanPlay);
+    }
+
+    // Cleanup event listener saat komponen di-unmount
+    return () => {
+      if (videoElement) {
+        videoElement.removeEventListener('canplay', handleCanPlay);
+      }
+    };
+  }, []);
+
+  return (
+    <div>
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        width="640"
+        height="480"
+        style={{ display: 'block', backgroundColor: '#000' }}
+      />
+    </div>
+  );
+};
+
+export default FaceTrackingGlasses2;
