@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useState } from 'react';
 import './App.css';
-import CameraFeed from './components/CameraFeed';
 import FaceMeshGlasses from './components/FaceMeshGlasses';
+import Object3DViewer from './components/Object3DViewer';
+// import Object3DViewer from './components/Object3DViewer';
 import TaskVisionGlasses from './components/TaskVisionGlasses';
 // import FaceTrackingGlasses4 from './components/FaceTrackingGlasses4';
 // import { Glasses } from './components/Glasses';
@@ -13,11 +14,16 @@ function App() {
   //   app();
   // }, []);
 
+  const [mode, setMode] = useState<string>('TaskVisionGlasses');
+
   return (
     <div className="App">
       {/* <FaceMeshGlasses /> */}
 
       <TaskVisionGlasses />
+
+      {/* <Object3DViewer width={640} height={480} /> */}
+
       {/* <FaceTrackingGlasses4 /> */}
       {/* <CameraFeed /> */}
       {/* <Glasses /> */}

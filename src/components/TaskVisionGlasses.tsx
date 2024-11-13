@@ -4,6 +4,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import { AmbientLight } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import Object3DViewer from './Object3DViewer';
 const videoWidth = 480;
 let lastVideoTime = -1;
 
@@ -13,6 +14,7 @@ function TaskVisionGlasses() {
   const canvasRef: any = useRef(null);
   const canvasGlassesRef: any = useRef(null);
   const [landmarks, setLandmarks] = useState<any[]>([]);
+  const [gltfUrl, setGLTFUrl] = useState<string>();
   const [gltf, setGLTF] = useState<any>();
 
   const [wh, setWH] = useState({width: 0, height: 0});
@@ -61,6 +63,7 @@ function TaskVisionGlasses() {
       const reader = new FileReader();
       reader.onload = (e: any) => {
         const modelUrl = e.target.result; // Set URL for the GLTF model
+        setGLTFUrl(modelUrl);
         const loader = new GLTFLoader();
         loader.load(modelUrl, (gltf: any) => {
           setGLTF(gltf);
@@ -117,8 +120,8 @@ function TaskVisionGlasses() {
       setGlassesPosition([
         position[0] * 10 - 5,
         -position[1] * 10 + 5,
-        -position[2] * 10,
-        // -nose.z * 10 - 1, // Menggunakan posisi z hidung untuk kedalaman
+        // -position[2] * 10,
+        -nose.z * 10 - 1, // Menggunakan posisi z hidung untuk kedalaman
         // -depth * 10, // Sesuaikan posisi z agar pegangan mendekati telinga
         // -position[2] * 10 - armLengthAdjustment, // Menggeser kacamata lebih dekat ke telinga
       ]);
@@ -273,6 +276,9 @@ function TaskVisionGlasses() {
   }
 
   function drawBlendShapes(el: HTMLElement, blendShapes: any[]) {
+    if (!el) {
+      return;
+    }
     if (!blendShapes.length) {
       return;
     }
@@ -282,13 +288,11 @@ function TaskVisionGlasses() {
     let htmlMaker = '';
     blendShapes[0].categories.map((shape: any) => {
       htmlMaker += `
-      <li class="blend-shapes-item">
-        <span class="blend-shapes-label">${
+      <li>
+        <span>${
           shape.displayName || shape.categoryName
         }</span>
-        <span class="blend-shapes-value" style="width: calc(${
-          +shape.score * 100
-        }% - 120px)">${(+shape.score).toFixed(4)}</span>
+        <span">${(+shape.score).toFixed(4)}</span>
       </li>
     `;
     });
@@ -299,36 +303,56 @@ function TaskVisionGlasses() {
 
   return (
     <div>
-      <div style={{ position: 'relative' }}>
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
+      <div
+        style={{ position: 'relative', display: 'flex', background: '#f2f2f2' }}
+      >
+        <div style={{flex: 1}}>
+          <h2>Face Tracker & Object 3D Viewer</h2>
+          <div>
+            <input
+              type="file"
+              accept=".glb,.gltf"
+              onChange={handleFileChange}
+            />
+          </div>
+        </div>
+
+        {/* <div
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            width: 640,
-            height: 480,
+            width: 400,
+            height: 400,
+            overflow: 'scroll',
           }}
-        />
-        <canvas ref={canvasRef} id="output_canvas"></canvas>
+        >
+          <ul id="video-blend-shapes"></ul>
+        </div> */}
 
-        {wh.width && wh.height && landmarks.length > 0 ? (
-          <Canvas
-            ref={canvasGlassesRef}
+        <div style={{ position: 'relative', display: 'flex', flex: 1 }}>
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
             style={{
-              width: wh.width,
-              height: wh.height,
-              position: 'fixed',
-              top: 0,
-              left: 0,
+              width: 640,
+              height: 480,
             }}
-          >
-            <primitive object={new AmbientLight(0xffffff, 0.5)} />
-            <pointLight position={[10, 10, 10]} />
-            <OrbitControls />
-            {gltf ? (
+          />
+          {wh.width && wh.height && landmarks.length > 0 && gltf ? (
+            <Canvas
+              ref={canvasGlassesRef}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: wh.width,
+                height: wh.height,
+                // background: 'rgb(0,0,0,0.5)',
+              }}
+            >
+              <primitive object={new AmbientLight(0xffffff, 0.5)} />
+              <pointLight position={[10, 10, 10]} />
+              <OrbitControls />
               <GlassesModel
                 gltf={gltf}
                 // landmarks={landmarks}
@@ -336,29 +360,19 @@ function TaskVisionGlasses() {
                 rotation={glassesRotation}
                 scale={glassesScale}
               />
-            ) : (
-              // <GlassesModelDefault
-              //   // landmarks={landmarks}
-              //   position={glassesPosition}
-              //   rotation={glassesRotation}
-              //   scale={glassesScale}
-              // />
-              false
-            )}
-          </Canvas>
-        ) : (
-          false
-        )}
-
-        <div>
-          <input type="file" accept=".glb,.gltf" onChange={handleFileChange} />
+            </Canvas>
+          ) : (
+            false
+          )}
         </div>
 
-        <div
-          className="blend-shapes"
-          style={{ position: 'fixed', top: 0, right: 0 }}
-        >
-          <ul className="blend-shapes-list" id="video-blend-shapes"></ul>
+        <canvas ref={canvasRef} id="output_canvas"></canvas>
+      </div>
+
+      <div style={{ position: 'relative' }}>
+        <h2>Object 3D Viewer</h2>
+        <div style={{ textAlign: 'center' }}>
+          <Object3DViewer width={640} height={480} />
         </div>
       </div>
     </div>
@@ -376,25 +390,6 @@ function GlassesModel({ gltf, position, rotation, scale }: any) {
     <primitive
       // object={model}
       object={gltf.scene}
-      position={position}
-      rotation={rotation}
-      scale={scale}
-    />
-  );
-}
-
-function GlassesModelDefault({ position, rotation, scale }: any) {
-  const gltfDefault = useGLTF('Excellent_1803_whitetransparant_2021.gltf');
-  // const gltf = useGLTF('/test-glasses2.glb');
-
-  useFrame(() => {
-    // Update posisi dan rotasi kacamata di sini jika diperlukan
-  });
-
-  return (
-    <primitive
-      // object={model}
-      object={gltfDefault.scene}
       position={position}
       rotation={rotation}
       scale={scale}
