@@ -4,11 +4,11 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import { AmbientLight } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import Object3DViewer from './Object3DViewer';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 const videoWidth = 480;
 let lastVideoTime = -1;
 
-function TaskVisionGlasses() {
+function TaskVisionGlasses({changeMode}: any) {
   const videoRef: any = useRef(null);
   const faceLandmarker: any = useRef(null);
   const canvasRef: any = useRef(null);
@@ -26,6 +26,16 @@ function TaskVisionGlasses() {
     canvasRef.drawingUtils = new DrawingUtils(ctx);
   }, []);
 
+  const [mode, setMode] = useState<'manual' | 'detection'>('detection');
+  const [eyes, setEyes] = useState([
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 },
+  ]);
+  const [nose, setNose] = useState({ x: 0, y: 0, z: 0 });
+  const [ears, setEars] = useState([
+    { x: 0, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 },
+  ]);
   const [glassesPosition, setGlassesPosition] = useState([0, 0, 0]);
   const [glassesRotation, setGlassesRotation] = useState([0, 0, 0]);
   const [glassesScale, setGlassesScale] = useState([0, 0, 0]);
@@ -65,6 +75,12 @@ function TaskVisionGlasses() {
         const modelUrl = e.target.result; // Set URL for the GLTF model
         setGLTFUrl(modelUrl);
         const loader = new GLTFLoader();
+        // Optional: Provide a DRACOLoader instance to decode compressed mesh data
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath(
+          'https://www.gstatic.com/draco/v1/decoders/'
+        );
+        loader.setDRACOLoader(dracoLoader);
         loader.load(modelUrl, (gltf: any) => {
           setGLTF(gltf);
         });
@@ -116,6 +132,10 @@ function TaskVisionGlasses() {
       // // Hitung kedalaman rata-rata antara mata dan telinga
       // const depth = (leftEar.z + rightEar.z) / 2;
 
+      setEyes([leftEye, rightEye]);
+      setNose(nose);
+      setEars([leftEar, rightEar]);
+
       // Atur posisi dan rotasi kacamata
       setGlassesPosition([
         position[0] * 10 - 5,
@@ -125,8 +145,6 @@ function TaskVisionGlasses() {
         // -depth * 10, // Sesuaikan posisi z agar pegangan mendekati telinga
         // -position[2] * 10 - armLengthAdjustment, // Menggeser kacamata lebih dekat ke telinga
       ]);
-      // setGlassesPosition([midPointX, midPointY, midPointZ]);
-      // setGlassesPosition([position[0], -position[1], -nose.z]);
       setGlassesRotation([0, 0, -rotation[2]]);
     }
   }
@@ -169,8 +187,12 @@ function TaskVisionGlasses() {
     if (!faceLandmarker.current) {
       return;
     }
+    
     const drawingUtils = canvasRef.drawingUtils;
     const video = videoRef.current;
+    if (!video) {
+      return;
+    }
     console.info('video', video);
     const radio = video.videoHeight / video.videoWidth;
 
@@ -216,57 +238,11 @@ function TaskVisionGlasses() {
     if (results.faceLandmarks) {
       onResults(results);
       setLandmarks(results.faceLandmarks);
-      for (const landmarks of results.faceLandmarks) {
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-          { color: '#C0C0C070', lineWidth: 1 }
-        );
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
-          { color: '#FF3030' }
-        );
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW,
-          { color: '#FF3030' }
-        );
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
-          { color: '#30FF30' }
-        );
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW,
-          { color: '#30FF30' }
-        );
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_FACE_OVAL,
-          { color: '#E0E0E0' }
-        );
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_LIPS,
-          { color: '#E0E0E0' }
-        );
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS,
-          { color: '#FF3030' }
-        );
-        drawingUtils.drawConnectors(
-          landmarks,
-          FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS,
-          { color: '#30FF30' }
-        );
-      }
+      
+      drawConnectors(drawingUtils, results);
     }
 
-    const videoBlendShapes = document.getElementById('video-blend-shapes');
-    drawBlendShapes(videoBlendShapes as any, results.faceBlendshapes);
+    drawBlendShapes(results.faceBlendshapes);
 
     // Call this function again to keep predicting when the browser is ready.
     // if (webcamRunning === true) {
@@ -275,8 +251,59 @@ function TaskVisionGlasses() {
     requestAnimationFrame(predictWebcam);
   }
 
-  function drawBlendShapes(el: HTMLElement, blendShapes: any[]) {
-    if (!el) {
+  function drawConnectors(drawingUtils: any, results: any) {
+    for (const landmarks of results.faceLandmarks) {
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_TESSELATION,
+        { color: '#C0C0C070', lineWidth: 1 }
+      );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
+        { color: '#FF3030' }
+      );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW,
+        { color: '#FF3030' }
+      );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
+        { color: '#30FF30' }
+      );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW,
+        { color: '#30FF30' }
+      );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_FACE_OVAL,
+        { color: '#E0E0E0' }
+      );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_LIPS,
+        { color: '#E0E0E0' }
+      );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS,
+        { color: '#FF3030' }
+      );
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS,
+        { color: '#30FF30' }
+      );
+    }
+  }
+
+  function drawBlendShapes(blendShapes: any[]) {
+    const videoBlendShapes = document.getElementById('video-blend-shapes');
+    if (!videoBlendShapes) {
       return;
     }
     if (!blendShapes.length) {
@@ -292,12 +319,12 @@ function TaskVisionGlasses() {
         <span>${
           shape.displayName || shape.categoryName
         }</span>
-        <span">${(+shape.score).toFixed(4)}</span>
+        <span">${(+shape.score).toFixed(2)}</span>
       </li>
     `;
     });
 
-    el.innerHTML = htmlMaker;
+    videoBlendShapes.innerHTML = htmlMaker;
   }
 
 
@@ -306,7 +333,7 @@ function TaskVisionGlasses() {
       <div
         style={{ position: 'relative', display: 'flex', background: '#f2f2f2' }}
       >
-        <div style={{flex: 1}}>
+        <div style={{ flex: 1 }}>
           <h2>Face Tracker & Object 3D Viewer</h2>
           <div>
             <input
@@ -315,6 +342,63 @@ function TaskVisionGlasses() {
               onChange={handleFileChange}
             />
           </div>
+
+          <ul style={{ textAlign: 'left' }}>
+            <li>
+              Eye:{' '}
+              {eyes
+                .map(
+                  (item) =>
+                    `[${[
+                      item.x.toFixed(2),
+                      item.y.toFixed(2),
+                      item.z.toFixed(2),
+                    ].join(', ')}]`
+                )
+                .join(', ')}
+            </li>
+            <li>
+              Nose:{' '}
+              {[nose.x.toFixed(2), nose.y.toFixed(2), nose.z.toFixed(2)].join(
+                ', '
+              )}
+            </li>
+            <li>
+              Ears:{' '}
+              {ears
+                .map(
+                  (item) =>
+                    `[${[
+                      item.x.toFixed(2),
+                      item.y.toFixed(2),
+                      item.z.toFixed(2),
+                    ].join(', ')}]`
+                )
+                .join(', ')}
+            </li>
+          </ul>
+          <ul style={{ textAlign: 'left' }}>
+            <li>
+              Position:{' '}
+              {glassesPosition.map((item) => item.toFixed(2)).join(', ')}
+            </li>
+            <li>
+              Rotation:{' '}
+              {glassesRotation.map((item) => item.toFixed(2)).join(', ')}
+            </li>
+            <li>
+              Scale: {glassesScale.map((item) => item.toFixed(2)).join(', ')}
+            </li>
+          </ul>
+
+          <button
+            style={{ margin: 20 }}
+            onClick={() => {
+              changeMode();
+            }}
+          >
+            Change mode to  3D OBJECT
+          </button>
         </div>
 
         {/* <div
@@ -367,13 +451,6 @@ function TaskVisionGlasses() {
         </div>
 
         <canvas ref={canvasRef} id="output_canvas"></canvas>
-      </div>
-
-      <div style={{ position: 'relative' }}>
-        <h2>Object 3D Viewer</h2>
-        <div style={{ textAlign: 'center' }}>
-          <Object3DViewer width={640} height={480} />
-        </div>
       </div>
     </div>
   );

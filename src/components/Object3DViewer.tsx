@@ -3,9 +3,10 @@ import { OrbitControls } from '@react-three/drei';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useState } from 'react';
 import { AmbientLight } from 'three';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-export default function Object3DViewer({width, height}: any) {
+export default function Object3DViewer({width, height, changeMode}: any) {
   const [gltfUrl, setGLTFUrl] = useState<string>();
   const [gltf, setGLTF] = useState<any>();
   
@@ -17,6 +18,12 @@ export default function Object3DViewer({width, height}: any) {
         const modelUrl = e.target.result; // Set URL for the GLTF model
         setGLTFUrl(modelUrl);
         const loader = new GLTFLoader();
+        // Optional: Provide a DRACOLoader instance to decode compressed mesh data
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath(
+          'https://www.gstatic.com/draco/v1/decoders/'
+        );
+        loader.setDRACOLoader(dracoLoader);
         loader.load(modelUrl, (gltf: any) => {
           setGLTF(gltf);
         });
@@ -26,22 +33,39 @@ export default function Object3DViewer({width, height}: any) {
   };
 
   return (
-    <div
-      style={{
-        justifyContent: 'center',
-        display: 'flex',
-      }}
-    >
-      <div>
+    <div>
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          background: 'grey',
+          padding: 10,
+          textAlign: 'left',
+          zIndex: 999,
+          display: 'flex', 
+          flexDirection: 'column',
+        }}
+      >
+        <h2>Object 3D Viewer</h2>
         <input type="file" accept=".glb,.gltf" onChange={handleFileChange} />
+
+        <button
+          style={{ margin: 20 }}
+          onClick={() => {
+            changeMode();
+          }}
+        >
+          Change mode to  FACE + GLASSES
+        </button>
       </div>
 
       {gltf ? (
         <Canvas
           // ref={canvasGlassesRef}
           style={{
-            width: width,
-            height: height,
+            width: '100vw',
+            height: '100vh',
             background: '#f2f2f2',
           }}
         >
@@ -66,9 +90,9 @@ function GlassesModel({ gltf, position, rotation, scale }: any) {
     <primitive
       // object={model}
       object={gltf.scene}
-      position={position}
-      rotation={rotation}
-      scale={scale}
+      // position={position}
+      // rotation={rotation}
+      // scale={scale}
     />
   );
 }
